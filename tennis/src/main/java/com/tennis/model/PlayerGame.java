@@ -1,16 +1,26 @@
 package com.tennis.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PlayerGame {
 
 	private String playerName;
 	private int wonSets;
 	private int wonGamesInTheCurrentSet;
+	private List<Integer> wonGamesPerSets;
 	private int wonPointsInTheCurrentGame;
-	private boolean isWinner = false;;
+	private boolean winner = false;
+	private boolean tieBreakGame = false;
 
 	public PlayerGame(String playerName) {
 		super();
 		this.playerName = playerName;
+		this.wonGamesPerSets = new ArrayList();
+	}
+
+	public boolean isWinner() {
+		return winner;
 	}
 
 	public String getPlayerName() {
@@ -33,47 +43,73 @@ public class PlayerGame {
 		return wonPointsInTheCurrentGame;
 	}
 
-	private void winsASet() {
+	private void winsASet(PlayerGame otherPlayer) {
 		this.wonSets++;
 		if (this.wonSets == RulesConstants.NUMBER_OF_SETS_TO_WIN_A_MATCH) {
-			this.isWinner = true;
+			this.winner = true;
 		}
-		startANewSet();
+		saveGamesPerSet(otherPlayer);
+
 	}
 
-	private void winsAGame(PlayerGame playerGame2) {
+	private void saveGamesPerSet(PlayerGame otherPlayer) {
+		this.wonGamesPerSets.add(this.wonGamesInTheCurrentSet);
+		otherPlayer.wonGamesPerSets.add(otherPlayer.wonGamesInTheCurrentSet);
+	}
+
+	private void winsAGame(PlayerGame otherPlayer) {
 		this.wonGamesInTheCurrentSet++;
-		if (this.wonGamesInTheCurrentSet >= RulesConstants.NUMBER_OF_GAMES_TO_WIN_A_SET) {
-			if (getDifferenceOfGamesWith(playerGame2) >= RulesConstants.DIFFERENSE_TO_WIN_THE_GAME) {
-				this.winsASet();
-				playerGame2.startANewSet();
-			}
+		checkTieBreak(otherPlayer);
+		if (setIsWonAgainst(otherPlayer)) {
+			this.winsASet(otherPlayer);
+			this.startANewSet();
+			otherPlayer.startANewSet();
 		}
-		startANewGame();
+	}
+
+	private void checkTieBreak(PlayerGame otherPlayer) {
+		if (this.wonGamesInTheCurrentSet == RulesConstants.NUMBER_OF_GAMES_TO_WIN_A_SET
+				&& otherPlayer.wonGamesInTheCurrentSet == RulesConstants.NUMBER_OF_GAMES_TO_WIN_A_SET) {
+			tieBreakGame = true;
+		}
+	}
+
+	public void winsAPointAgainst(PlayerGame otherPlayer) {
+		this.wonPointsInTheCurrentGame++;
+		if (gameIsWonAgainst(otherPlayer)) {
+			this.winsAGame(otherPlayer);
+			this.startANewGame();
+			otherPlayer.startANewGame();
+		}
+	}
+
+	private boolean gameIsWonAgainst(PlayerGame otherPlayer) {
+		int setPoints = RulesConstants.NUMBER_OF_POINTS_TO_WIN_A_GAME;
+		if (tieBreakGame) {
+			setPoints = RulesConstants.NUMBER_OF_POINTS_TO_WIN_A_TIE_BREAK;
+		}
+		return this.wonPointsInTheCurrentGame >= setPoints
+				&& getDifferenceOfPointsWith(otherPlayer) >= RulesConstants.DIFFERENSE_TO_WIN_THE_GAME;
+	}
+
+	private boolean setIsWonAgainst(PlayerGame otherPlayer) {
+		return (this.wonGamesInTheCurrentSet >= RulesConstants.NUMBER_OF_GAMES_TO_WIN_A_SET
+				&& getDifferenceOfGamesWith(otherPlayer) >= RulesConstants.DIFFERENSE_TO_WIN_THE_GAME)
+				|| (this.tieBreakGame && this.wonGamesInTheCurrentSet > otherPlayer.wonGamesInTheCurrentSet);
 	}
 
 	private int getDifferenceOfGamesWith(PlayerGame playerGame2) {
 		return this.wonGamesInTheCurrentSet - playerGame2.wonGamesInTheCurrentSet;
 	}
 
-	public void winsAPointAgainst(PlayerGame playerGame2) {
-		this.wonPointsInTheCurrentGame++;
-		if (this.wonPointsInTheCurrentGame >= RulesConstants.NUMBER_OF_POINTS_TO_WIN_A_GAME) {
-			if (getDifferenceOfPointsWith(playerGame2) >= RulesConstants.DIFFERENSE_TO_WIN_THE_GAME) {
-				this.winsAGame(playerGame2);
-				playerGame2.startANewGame();
-			}
-		}
-		System.out.println(this);
-	}
-
-	private int getDifferenceOfPointsWith(PlayerGame playerGame2) {
-		return this.wonPointsInTheCurrentGame - playerGame2.wonPointsInTheCurrentGame;
+	private int getDifferenceOfPointsWith(PlayerGame otherPlayer) {
+		return this.wonPointsInTheCurrentGame - otherPlayer.wonPointsInTheCurrentGame;
 	}
 
 	private void startANewSet() {
 		this.wonGamesInTheCurrentSet = 0;
 		this.wonPointsInTheCurrentGame = 0;
+		this.tieBreakGame = false;
 	}
 
 	private void startANewGame() {
@@ -89,7 +125,8 @@ public class PlayerGame {
 	@Override
 	public String toString() {
 		return "PlayerGame [playerName=" + playerName + ", wonSets=" + wonSets + ", wonGamesInTheCurrentSet="
-				+ wonGamesInTheCurrentSet + ", wonPointsInTheCurrentGame=" + wonPointsInTheCurrentGame + "]";
+				+ wonGamesInTheCurrentSet + ", wonGamesPerSets=" + wonGamesPerSets + ", wonPointsInTheCurrentGame="
+				+ wonPointsInTheCurrentGame + ", winner=" + winner + "]";
 	}
 
 }
